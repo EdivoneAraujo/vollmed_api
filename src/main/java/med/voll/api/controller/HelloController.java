@@ -1,3 +1,4 @@
+
 package med.voll.api.controller;
 
 import org.springframework.web.bind.annotation.GetMapping;
@@ -10,6 +11,6 @@ public class HelloController {
 
     @GetMapping
     public String olaMundo() {
-        return "Hello World no Spring!";
+        return "Hello World Spring!";
     }
 }
