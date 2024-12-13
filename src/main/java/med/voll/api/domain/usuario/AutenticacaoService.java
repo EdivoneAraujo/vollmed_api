@@ -1,16 +1,22 @@
 package med.voll.api.domain.usuario;
 
+import jakarta.transaction.Transactional;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Lazy;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.slf4j.Logger;
+
+import java.util.List;
 
 @Service
 public class AutenticacaoService implements UserDetailsService {
+
+    private static final Logger logger = LoggerFactory.getLogger(AutenticacaoService.class);
 
     @Autowired
     private UsuarioRepository repository;
@@ -18,9 +24,10 @@ public class AutenticacaoService implements UserDetailsService {
     @Autowired
     private PasswordEncoder passwordEncoder;
 
-    @Autowired
-    public AutenticacaoService(@Lazy PasswordEncoder passwordEncoder) {
-        this.passwordEncoder = passwordEncoder;
+    public void salvarUsuario(Usuario usuario) {
+        String senhaCodificada = passwordEncoder.encode(usuario.getSenha());
+        usuario.setSenha(senhaCodificada);
+        repository.save(usuario);
     }
 
     @Override
@@ -29,31 +36,28 @@ public class AutenticacaoService implements UserDetailsService {
         if (usuario == null) {
             throw new UsernameNotFoundException("Usuário não encontrado: " + username);
         }
+        return new User(usuario.getLogin(), usuario.getSenha(), usuario.getAuthorities());
+    }
 
-        // Verifique se a senha fornecida corresponde ao hash armazenado no banco de dados
-        if (!passwordEncoder.matches(usuario.getPassword(), usuario.getPassword())) {
-            // Re-encode a senha se ela não estiver no formato correto
-            String novaSenha = passwordEncoder.encode(usuario.getPassword());
-            usuario.setSenha(novaSenha);
-            repository.save(usuario); // Salve a senha re-encodificada
+    @Transactional
+    public void atualizarSenhas() {
+        List<Usuario> usuarios = repository.findAll();
+
+        for (Usuario usuario : usuarios) {
+            if (!passwordEncoder.matches(usuario.getSenha(), usuario.getSenha())) {
+                String senhaCodificada = passwordEncoder.encode(usuario.getSenha());
+                usuario.setSenha(senhaCodificada);
+                repository.save(usuario);
+            }
         }
-
-        return new User(usuario.getUsername(), usuario.getPassword(), usuario.getAuthorities());
     }
 
     public boolean verificarSenha(String senhaFornecida, Usuario usuario) {
-        // Verifica se a senha fornecida corresponde ao hash BCrypt do usuário
-        return passwordEncoder.matches(senhaFornecida, usuario.getPassword());
+        logger.debug("Senha fornecida: " + senhaFornecida);
+        logger.debug("Senha armazenada: " + usuario.getPassword());
+        return passwordEncoder.matches(senhaFornecida, usuario.getSenha());
     }
 
-    public void salvarUsuario(Usuario usuario) {
-        // Codifica a senha do usuário antes de salvar no banco de dados
-        String senhaCodificada = passwordEncoder.encode(usuario.getSenha());
-        usuario.setSenha(senhaCodificada);
-        repository.save(usuario);
-    }
-
-    // Metodo de verificação de senha, para comparar se a senha fornecida corresponde ao hash
     public boolean validarSenha(String senha, String senhaEnc) {
         return passwordEncoder.matches(senha, senhaEnc);
     }

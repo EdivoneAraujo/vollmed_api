@@ -1,4 +1,4 @@
-package med.voll.api.Infra.security;
+package med.voll.api.infra.security;
 
 import med.voll.api.domain.usuario.AutenticacaoService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,16 +29,22 @@ public class SecurityConfigurations {
     private AutenticacaoService autenticacaoService;
 
     @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder ();
+    }
+
+    @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         return http.csrf(csrf -> csrf.disable())
-                .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS)) // Não manter sessão
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/login").permitAll()
-                        .requestMatchers(HttpMethod.DELETE, "/medicos").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.DELETE, "/pacientes").hasRole("ADMIN")
-                        .anyRequest().authenticated()
+                        .requestMatchers(HttpMethod.POST, "/login").permitAll() // Permite login
+                        .requestMatchers("/v3/api-docs/**", "/swagger-ui.html", "/swagger-ui/**").permitAll() // Permite Swagger
+                        .requestMatchers(HttpMethod.DELETE, "/medicos").hasRole("ADMIN") // Permite DELETE para ADMIN
+                        .requestMatchers(HttpMethod.DELETE, "/pacientes").hasRole("ADMIN") // Permite DELETE para ADMIN
+                        .anyRequest().authenticated() // Requer autenticação para qualquer outra requisição
                 )
-                .addFilterBefore(securityFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(securityFilter, UsernamePasswordAuthenticationFilter.class) // Filtro personalizado
                 .build();
     }
 
@@ -50,13 +56,8 @@ public class SecurityConfigurations {
     @Bean
     public DaoAuthenticationProvider daoAuthenticationProvider() {
         DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider();
-        authProvider.setUserDetailsService(autenticacaoService);
-        authProvider.setPasswordEncoder(passwordEncoder());
+        authProvider.setUserDetailsService(autenticacaoService);  // AutenticacaoService implementa UserDetailsService
+        authProvider.setPasswordEncoder(passwordEncoder());  // Utiliza o PasswordEncoder
         return authProvider;
-    }
-
-    @Bean
-    public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder ();
     }
 }

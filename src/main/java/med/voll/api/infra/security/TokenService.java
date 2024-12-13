@@ -1,4 +1,4 @@
-package med.voll.api.Infra.security;
+package med.voll.api.infra.security;
 
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.algorithms.Algorithm;
@@ -9,6 +9,7 @@ import org.slf4j.LoggerFactory;
 import org.slf4j.Logger;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
@@ -24,18 +25,15 @@ public class TokenService {
     @Value("${api.security.token.expiration}")
     private int expirationHours;
 
-    /**
-     * Gera um token JWT para o usuário fornecido.
-     *
-     * @param usuario O usuário para o qual o token será gerado.
-     * @return O token JWT gerado.
-     */
+    @Value("${api.security.token.issuer}")
+    private String issuer;
+
     public String gerarToken(Usuario usuario) {
         try {
             logger.info("Gerando token para o usuário: {}", usuario.getLogin());
             Algorithm algoritmo = Algorithm.HMAC256(secret);
             return JWT.create()
-                    .withIssuer("API Voll.med")
+                    .withIssuer(issuer)
                     .withSubject(usuario.getLogin())
                     .withExpiresAt(dataExpiracao())
                     .sign(algoritmo);
@@ -45,18 +43,12 @@ public class TokenService {
         }
     }
 
-    /**
-     * Obtém o subject (identificador do usuário) a partir de um token JWT.
-     *
-     * @param tokenJWT O token JWT fornecido.
-     * @return O subject contido no token.
-     */
     public String getSubject(String tokenJWT) {
         try {
             logger.info("Validando token JWT...");
             Algorithm algoritmo = Algorithm.HMAC256(secret);
             return JWT.require(algoritmo)
-                    .withIssuer("API Voll.med")
+                    .withIssuer(issuer)
                     .build()
                     .verify(tokenJWT)
                     .getSubject();
@@ -66,11 +58,6 @@ public class TokenService {
         }
     }
 
-    /**
-     * Calcula a data de expiração do token com base no tempo atual e no valor configurado.
-     *
-     * @return A data de expiração como um objeto Instant.
-     */
     private Instant dataExpiracao() {
         return LocalDateTime.now()
                 .plusHours(expirationHours)
