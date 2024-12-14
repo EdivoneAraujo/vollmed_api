@@ -4,6 +4,7 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+
 import med.voll.api.domain.usuario.UsuarioRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,35 +29,40 @@ public class SecurityFilter extends OncePerRequestFilter {
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
-        String tokenJWT = recuperarToken(request);
+        var tokenJWT = recuperarToken(request);
 
         if (tokenJWT != null) {
             try {
-                String subject = tokenService.getSubject(tokenJWT);
-                logger.debug("Token JWT decodificado para o usuário: " + subject);
+                // Extrai o subject (usuário) do token JWT
+                var subject = tokenService.getSubject(tokenJWT);
 
+                // Busca o usuário no banco de dados
                 var usuario = repository.findByLogin(subject);
 
                 if (usuario != null) {
+                    // Cria a autenticação no contexto de segurança
                     var authentication = new UsernamePasswordAuthenticationToken(usuario, null, usuario.getAuthorities());
                     SecurityContextHolder.getContext().setAuthentication(authentication);
-                    logger.info("Usuário autenticado: {}", subject);  // Usando placeholders para melhorar o logging
+                    logger.info("Usuário autenticado: " + subject);
                 } else {
-                    logger.warn("Usuário não encontrado para o token: {}", subject);  // Usando placeholders para melhorar o logging
+                    logger.warn("Usuário não encontrado para o token: " + subject);
                 }
             } catch (Exception e) {
                 logger.error("Erro ao processar o token JWT", e);
             }
         }
 
+        // Continua o filtro da requisição
         filterChain.doFilter(request, response);
     }
 
     private String recuperarToken(HttpServletRequest request) {
-        String authorizationHeader = request.getHeader("Authorization");
+        // Recupera o token JWT do cabeçalho Authorization
+        var authorizationHeader = request.getHeader("Authorization");
         if (authorizationHeader != null && authorizationHeader.startsWith("Bearer ")) {
             return authorizationHeader.replace("Bearer ", "");
         }
         return null;
     }
 }
+

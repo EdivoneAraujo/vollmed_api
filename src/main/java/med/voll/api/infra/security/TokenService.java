@@ -30,31 +30,27 @@ public class TokenService {
 
     public String gerarToken(Usuario usuario) {
         try {
-            logger.info("Gerando token para o usuário: {}", usuario.getLogin());
-            Algorithm algoritmo = Algorithm.HMAC256(secret);
+            var algoritmo = Algorithm.HMAC256(secret);
             return JWT.create()
                     .withIssuer(issuer)
                     .withSubject(usuario.getLogin())
                     .withExpiresAt(dataExpiracao())
                     .sign(algoritmo);
-        } catch (JWTCreationException exception) {
-            logger.error("Erro ao gerar token JWT", exception);
-            throw new TokenException("Erro ao gerar token JWT", exception);
+        } catch (JWTCreationException exception){
+            throw new RuntimeException("erro ao gerar token jwt", exception);
         }
     }
 
     public String getSubject(String tokenJWT) {
         try {
-            logger.info("Validando token JWT...");
-            Algorithm algoritmo = Algorithm.HMAC256(secret);
+            var algoritmo = Algorithm.HMAC256(secret);
             return JWT.require(algoritmo)
                     .withIssuer(issuer)
                     .build()
                     .verify(tokenJWT)
                     .getSubject();
         } catch (JWTVerificationException exception) {
-            logger.error("Token JWT inválido ou expirado!", exception);
-            throw new TokenException("Token JWT inválido ou expirado!", exception);
+            throw new RuntimeException("Token JWT inválido ou expirado: " +tokenJWT);
         }
     }
 
